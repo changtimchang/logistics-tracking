@@ -19,8 +19,8 @@ export default {
   data() {
     return {
       dropdownVisible: false,
-      items: ['물품1', '물품2', '물품3', '물품4', '물품5'],
-      selectedItem: null, // 선택된 물품을 저장하기 위한 상태
+      items: ["물품1", "물품2", "물품3", "물품4", "물품5"],
+      selectedItem: null,
     };
   },
   methods: {
@@ -28,8 +28,8 @@ export default {
       this.dropdownVisible = !this.dropdownVisible;
     },
     selectItem(item) {
-      this.selectedItem = item; // 선택한 물품 저장
-      this.$emit('item-selected', item);
+      this.selectedItem = item;
+      this.$emit("item-selected", item);
       this.toggleDropdown();
     },
   },
@@ -46,7 +46,7 @@ button {
 }
 
 .dropdown-menu {
-  list-style-type: none; /* 데코레이션을 없앱니다. */
+  list-style-type: none;
   padding: 0;
   margin: 0;
   background-color: #f9f9f9;
@@ -64,11 +64,7 @@ button {
   border-bottom: none;
 }
 
-.dropdown-menu li:hover {
-  background-color: #eaeaea;
-}
-
 .dropdown-menu li.selected {
-  color: red; /* 선택된 물품의 색상을 붉게 바꿉니다. */
+  color: red;
 }
 </style>

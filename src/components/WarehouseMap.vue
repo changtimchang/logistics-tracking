@@ -4,7 +4,7 @@
     <div
       v-for="warehouse in warehouses"
       :key="warehouse.name"
-      :class="['warehouse', { highlighted: warehouse.name === currentLocation }]"
+      :class="['warehouse', { highlighted: warehouse.name === currentLocation, visited: isVisited(warehouse.name) }]"
       :style="getPositionStyle(warehouse)"
     >
       {{ warehouse.name }}
@@ -20,7 +20,7 @@
 </template>
 
 <script>
-import axios from "axios"; // 예시로 axios 사용
+import rfidData from "@/data/rfid-data.json"; // JSON 파일을 가져오기
 
 export default {
   props: ["selectedItem"],
@@ -33,8 +33,17 @@ export default {
         { name: "부산", position: { top: "82%", left: "70%" } },
         { name: "대구", position: { top: "70%", left: "65%" } },
       ],
-      rfidData: [], // RFID 데이터를 저장
-      currentLocation: null, // 현재 물품의 위치
+      itemPaths: {
+        물품1: ["대전", "광주"],    // json의 최초 위치를 제외한 경로
+        물품2: ["부산", "대구", "대전"],
+        물품3: ["대구", "광주", "부산", "대전"],
+        물품4: ["대전", "서울", "광주", "대구"],
+        물품5: ["서울", "부산", "대구"],
+      },
+      rfidData: rfidData,
+      currentLocation: null,
+      startLocation: null,
+      visitedLocations: [],
       itemIcons: {
         물품1: require("@/assets/item1.png"),
         물품2: require("@/assets/item2.png"),
@@ -49,38 +58,57 @@ export default {
     selectedItem(newItem) {
       if (newItem) {
         this.resetAnimation();
-        this.fetchRFIDData();
+        this.updateStartLocation();
+        this.animateItem();
       }
     },
   },
   methods: {
-    fetchRFIDData() {
-      const apiUrl = `https://api.example.com/rfid-data`;
-      
-      axios.get(apiUrl)
-        .then(response => {
-          this.rfidData = response.data;
-          this.updateCurrentLocation();
-        })
-        .catch(error => {
-          console.error("Error fetching RFID data", error);
-        });
-    },
-    updateCurrentLocation() {
+    updateStartLocation() {
       const latestEntry = this.rfidData
-        .filter(entry => entry.id === this.selectedItem)
+        .filter((entry) => entry.id === this.selectedItem)
         .sort((a, b) => new Date(b.time) - new Date(a.time))[0];
-      
+
       if (latestEntry) {
-        this.currentLocation = latestEntry.location;
+        this.startLocation = latestEntry.location;
       }
+    },
+    animateItem() {
+      if (!this.selectedItem) return;
+
+      const path = [this.startLocation, ...this.itemPaths[this.selectedItem]];
+      this.currentLocation = path[0];
+      this.visitedLocations = [{ location: this.currentLocation, time: new Date().toLocaleString() }];
+      let stepIndex = 1;
+
+      // 1초 대기 후 애니메이션 시작
+      setTimeout(() => {
+        this.interval = setInterval(() => {
+          if (stepIndex < path.length) {
+            this.currentLocation = path[stepIndex];
+            this.visitedLocations.push({ location: this.currentLocation, time: new Date().toLocaleString() });
+            stepIndex++;
+          } else {
+            clearInterval(this.interval);
+            this.$emit("log-complete", {
+              itemName: this.selectedItem,
+              path: this.visitedLocations,
+            });
+          }
+        }, 1000);
+      }, 1000);
     },
     resetAnimation() {
       this.currentLocation = null;
+      this.visitedLocations = [];
       this.resetting = true;
       setTimeout(() => {
         this.resetting = false;
       }, 50);
+      clearInterval(this.interval);
+    },
+    isVisited(location) {
+      return this.visitedLocations.some(visit => visit.location === location);
     },
     getPositionStyle(warehouse) {
       return {
@@ -137,7 +165,11 @@ export default {
   transition: background-color 0.3s ease;
 }
 
-.highlighted {
+.warehouse.visited {
+  background-color: lightblue;
+}
+
+.warehouse.highlighted {
   background-color: yellow;
 }
 

@@ -9,7 +9,6 @@
     >
       {{ warehouse.name }}
     </div>
-    <!-- 선택한 물품의 시작 위치에 아이콘을 보이도록 설정 -->
     <img
       v-if="selectedItem && !resetting"
       class="item-icon"
@@ -26,23 +25,24 @@ export default {
   data() {
     return {
       warehouses: [
-        { name: "서울", position: { top: "23%", left: "50%" } },
-        { name: "대전", position: { top: "45%", left: "48%" } },
-        { name: "광주", position: { top: "75%", left: "39%" } },
-        { name: "부산", position: { top: "82%", left: "70%" } },
-        { name: "대구", position: { top: "70%", left: "65%" } },
+        // 각 지역의 위치를 적절히 수정하여 반영
+        { name: '서울', position: { top: '20%', left: '32%' } },
+        { name: '대전', position: { top: '42%', left: '40%' } },
+        { name: '광주', position: { top: '63%', left: '29%' } },
+        { name: '부산', position: { top: '63%', left: '77%' } },
+        { name: '대구', position: { top: '51%', left: '67%' } },
+        { name: '울산', position: { top: '55%', left: '81%' } },
       ],
       itemPaths: {
-        물품1: ["서울", "대전", "광주"],
-        물품2: ["서울", "부산", "대구", "대전"],
-        물품3: ["서울", "대구", "광주", "부산", "대전"],
-        물품4: ["부산", "대전", "서울", "광주", "대구"],
-        물품5: ["광주", "서울", "부산", "대구"],
+        '물품1': ['서울', '대전', '광주', '울산'],
+        '물품2': ['서울', '부산', '대구', '대전', '울산'],
+        '물품3': ['서울', '대구', '광주', '부산', '대전', '울산'],
+        '물품4': ['부산', '대전', '서울', '광주', '대구','울산'],
+        '물품5': ['광주', '서울', '부산', '대구','울산'],
       },
       currentItemIndex: 0,
       moveProgress: 0,
       interval: null,
-      // 각 물품에 해당하는 아이콘을 정의합니다.
       itemIcons: {
         물품1: require("@/assets/item1.png"),
         물품2: require("@/assets/item2.png"),
@@ -50,7 +50,7 @@ export default {
         물품4: require("@/assets/item4.png"),
         물품5: require("@/assets/item5.png"),
       },
-      resetting: false,  // 변환 중 상태를 추적
+      resetting: false,
     };
   },
   watch: {
@@ -59,7 +59,7 @@ export default {
         this.resetAnimation();
         setTimeout(() => {
           this.animateItem();
-        }, 100);  // 짧은 지연 후 애니메이션 시작
+        }, 100);
       }
     },
   },
@@ -77,8 +77,8 @@ export default {
       this.moveProgress = 0;
       this.resetting = true;
       setTimeout(() => {
-        this.resetting = false;  // 리셋 후 아이콘을 표시
-      }, 50);  // 리셋 후 짧은 지연으로 새로운 아이콘 표시
+        this.resetting = false;
+      }, 50);
     },
     getPositionStyle(warehouse) {
       return {
@@ -96,7 +96,6 @@ export default {
         (w) => w.name === path[this.currentItemIndex + 1]
       );
 
-      // 최종 위치에 도달했으면 마지막 위치에 고정
       const finalTopPercent = parseFloat(originWarehouse.position.top);
       const finalLeftPercent = parseFloat(originWarehouse.position.left);
 
@@ -128,25 +127,29 @@ export default {
       this.currentItemIndex = 0;
       this.moveProgress = 0;
 
-      // 1초 대기 후 애니메이션 시작
       setTimeout(() => {
         const moveItem = () => {
-          this.moveProgress += 0.2; // 이동 진행도 증가
+          this.moveProgress += 0.2;
 
           if (this.moveProgress >= 1) {
             this.moveProgress = 0;
             this.currentItemIndex++;
             if (this.currentItemIndex >= path.length - 1) {
               clearInterval(this.interval);
-              this.interval = null; // 모든 경로 완료 후 interval 해제
+              this.interval = null;
+              const logEntry = {
+                itemName: this.selectedItem,
+                location: path[this.currentItemIndex],
+                time: new Date().toLocaleString(),
+              };
+              this.$emit("log-complete", logEntry);
               return;
             }
           }
         };
 
-        // 물품의 이동 시작
-        this.interval = setInterval(moveItem, 200); // 0.2초마다 이동하여 1초에 걸쳐 각 스텝 완료
-      }, 1000); // 최초 위치에서 1초 대기
+        this.interval = setInterval(moveItem, 200);
+      }, 1000);
     },
   },
 };

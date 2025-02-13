@@ -4,7 +4,7 @@
     <div
       v-for="warehouse in warehouses"
       :key="warehouse.name"
-      :class="['warehouse', { highlighted: isHighlighted(warehouse.name) }]"
+      :class="['warehouse', { highlighted: warehouse.name === currentLocation }]"
       :style="getPositionStyle(warehouse)"
     >
       {{ warehouse.name }}
@@ -20,29 +20,21 @@
 </template>
 
 <script>
+import axios from "axios"; // 예시로 axios 사용
+
 export default {
   props: ["selectedItem"],
   data() {
     return {
       warehouses: [
-        // 각 지역의 위치를 적절히 수정하여 반영
-        { name: '서울', position: { top: '20%', left: '32%' } },
-        { name: '대전', position: { top: '42%', left: '40%' } },
-        { name: '광주', position: { top: '63%', left: '29%' } },
-        { name: '부산', position: { top: '63%', left: '77%' } },
-        { name: '대구', position: { top: '51%', left: '67%' } },
-        { name: '울산', position: { top: '55%', left: '81%' } },
+        { name: "서울", position: { top: "23%", left: "50%" } },
+        { name: "대전", position: { top: "45%", left: "48%" } },
+        { name: "광주", position: { top: "75%", left: "39%" } },
+        { name: "부산", position: { top: "82%", left: "70%" } },
+        { name: "대구", position: { top: "70%", left: "65%" } },
       ],
-      itemPaths: {
-        '물품1': ['서울', '대전', '광주', '울산'],
-        '물품2': ['서울', '부산', '대구', '대전', '울산'],
-        '물품3': ['서울', '대구', '광주', '부산', '대전', '울산'],
-        '물품4': ['부산', '대전', '서울', '광주', '대구','울산'],
-        '물품5': ['광주', '서울', '부산', '대구','울산'],
-      },
-      currentItemIndex: 0,
-      moveProgress: 0,
-      interval: null,
+      rfidData: [], // RFID 데이터를 저장
+      currentLocation: null, // 현재 물품의 위치
       itemIcons: {
         물품1: require("@/assets/item1.png"),
         물품2: require("@/assets/item2.png"),
@@ -54,27 +46,37 @@ export default {
     };
   },
   watch: {
-    selectedItem(newItem, oldItem) {
-      if (newItem !== oldItem) {
+    selectedItem(newItem) {
+      if (newItem) {
         this.resetAnimation();
-        setTimeout(() => {
-          this.animateItem();
-        }, 100);
+        this.fetchRFIDData();
       }
     },
   },
   methods: {
-    isHighlighted(name) {
-      return (
-        this.selectedItem &&
-        this.itemPaths[this.selectedItem].includes(name)
-      );
+    fetchRFIDData() {
+      const apiUrl = `https://api.example.com/rfid-data`;
+      
+      axios.get(apiUrl)
+        .then(response => {
+          this.rfidData = response.data;
+          this.updateCurrentLocation();
+        })
+        .catch(error => {
+          console.error("Error fetching RFID data", error);
+        });
+    },
+    updateCurrentLocation() {
+      const latestEntry = this.rfidData
+        .filter(entry => entry.id === this.selectedItem)
+        .sort((a, b) => new Date(b.time) - new Date(a.time))[0];
+      
+      if (latestEntry) {
+        this.currentLocation = latestEntry.location;
+      }
     },
     resetAnimation() {
-      clearInterval(this.interval);
-      this.interval = null;
-      this.currentItemIndex = 0;
-      this.moveProgress = 0;
+      this.currentLocation = null;
       this.resetting = true;
       setTimeout(() => {
         this.resetting = false;
@@ -88,68 +90,16 @@ export default {
       };
     },
     getItemPositionStyle() {
-      const path = this.itemPaths[this.selectedItem];
-      const originWarehouse = this.warehouses.find(
-        (w) => w.name === path[this.currentItemIndex]
+      const warehouse = this.warehouses.find(
+        (w) => w.name === this.currentLocation
       );
-      const destinationWarehouse = this.warehouses.find(
-        (w) => w.name === path[this.currentItemIndex + 1]
-      );
-
-      const finalTopPercent = parseFloat(originWarehouse.position.top);
-      const finalLeftPercent = parseFloat(originWarehouse.position.left);
-
-      const currentTopPercent = destinationWarehouse
-        ? parseFloat(originWarehouse.position.top) +
-          (parseFloat(destinationWarehouse.position.top) -
-            parseFloat(originWarehouse.position.top)) *
-            this.moveProgress
-        : finalTopPercent;
-
-      const currentLeftPercent = destinationWarehouse
-        ? parseFloat(originWarehouse.position.left) +
-          (parseFloat(destinationWarehouse.position.left) -
-            parseFloat(originWarehouse.position.left)) *
-            this.moveProgress
-        : finalLeftPercent;
 
       return {
-        top: `${currentTopPercent}%`,
-        left: `${currentLeftPercent}%`,
+        top: warehouse ? warehouse.position.top : "0%",
+        left: warehouse ? warehouse.position.left : "0%",
         transform: "translate(-50%, -50%)",
         transition: "top 0.2s linear, left 0.2s linear",
       };
-    },
-    animateItem() {
-      if (!this.selectedItem || this.interval) return;
-
-      const path = this.itemPaths[this.selectedItem];
-      this.currentItemIndex = 0;
-      this.moveProgress = 0;
-
-      setTimeout(() => {
-        const moveItem = () => {
-          this.moveProgress += 0.2;
-
-          if (this.moveProgress >= 1) {
-            this.moveProgress = 0;
-            this.currentItemIndex++;
-            if (this.currentItemIndex >= path.length - 1) {
-              clearInterval(this.interval);
-              this.interval = null;
-              const logEntry = {
-                itemName: this.selectedItem,
-                location: path[this.currentItemIndex],
-                time: new Date().toLocaleString(),
-              };
-              this.$emit("log-complete", logEntry);
-              return;
-            }
-          }
-        };
-
-        this.interval = setInterval(moveItem, 200);
-      }, 1000);
     },
   },
 };
